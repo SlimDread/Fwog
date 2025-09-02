@@ -1,0 +1,35 @@
+name: Build Windows EXEs
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure CMake (Release)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Collect EXEs and DLLs
+        shell: pwsh
+        run: |
+          New-Item -Force -ItemType Directory dist | Out-Null
+          # Grab any .exe/.dll produced anywhere in the build tree
+          Get-ChildItem -Path build -Recurse -Include *.exe,*.dll,*.pdb | Copy-Item -Destination dist -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fwog-windows-exes
+          path: dist
